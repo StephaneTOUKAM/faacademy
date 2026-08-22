@@ -1,0 +1,15 @@
+uploads/
+cache/
+cachek/
+litespeed/
+ai1wm-backups/
+debug.log
+imunify-security/
+upgrade/
+upgrade-temp-backup/
+w3tc-config/
+*.zip
+temp-write-test-*
+.DS_Store
+debug.lo
+languages/

@@ -1,0 +1,29 @@
+.edumall-dark-scheme {
+	.tutor-dashboard-header-wrap {
+		border-color: transparent;
+	}
+
+	.dashboard-header-toggle-menu {
+		color: $secondary-color;
+	}
+
+	.tutor-dashboard-permalinks {
+		li {
+			a {
+				&:hover {
+					background: rgba(255, 255, 255, 0.1);
+				}
+			}
+		}
+	}
+
+	.dashboard-table {
+		th {
+			background: $box-border;
+		}
+	}
+
+	.tutor-dashboard-content-inner .tutor-progress-bar {
+		background: #2b3643;
+	}
+}

@@ -1,0 +1,94 @@
+/*
+Theme Name: Edumall Child
+Theme URI: https://edumall.thememove.com/
+Author: ThemeMove
+Author URI: https://thememove.com/
+Version: 1.0.0
+Template: edumall
+Text Domain:  edumall-child
+Tags: editor-style, featured-images, microformats, post-formats, rtl-language-support, sticky-post, threaded-comments, translation-ready
+*/
+
+
+.header-01.header-dark .header-icon,
+.header-01.header-dark .wpml-ls-item-toggle {
+    color: white;
+    background: transparent;
+    /* border: 1px solid transparent; */
+    border-radius: 26px;
+}
+
+.header-dark .top-bar-01 a:hover,
+.top-bar-01 a:focus {
+    color: #031f42;
+    background: white;
+}
+
+.wpml-ls-legacy-dropdown .wpml-ls-sub-menu a {
+    border-width: 0 1px 1px;
+    /* border-radius: 26px; */
+    color: #031f42 !important;
+}
+
+.page-header.headroom--not-top .wpml-ls-item-toggle {
+    color: #fff !important;
+    background: white;
+}
+
+.header-01.header-dark .wpml-ls-item-toggle {
+    color: white !important;
+}
+
+.header-dark .top-bar-01 a:hover, .top-bar-01 a:focus {
+    color: #031f42 !important;
+}
+
+.header-dark .top-bar-user-links a:hover, .top-bar-user-links a:focus {
+    color: #ffc221 !important;
+}
+
+.mini-cart .mini-cart-icon:before {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    color: #0071dc !important;
+    content: "\f07a";
+    line-height: 0;
+    -webkit-transform: translateY(-50%);
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+
+.tutor-dashboard-header-language-switcher {
+    margin-left: 16px;
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown {
+    width: 11.5em;
+    font-size: 12px;
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown a {
+    padding: 6px 8px;
+    border-color: #e4e4eb;
+    border-radius: 4px;
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown a.wpml-ls-item-toggle {
+    padding-right: calc(8px + .7em + .7em);
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-flag {
+    width: 16px;
+    height: auto;
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-sub-menu {
+    border-color: #e4e4eb;
+    border-radius: 0 0 4px 4px;
+    overflow: hidden;
+}
+
+.tutor-dashboard-header-language-switcher .wpml-ls-legacy-dropdown .wpml-ls-sub-menu a {
+    border-color: #e4e4eb;
+}
