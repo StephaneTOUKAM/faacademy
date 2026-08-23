@@ -27,6 +27,49 @@ if (! function_exists('edumall_wpml_current_language')) {
 }
 
 /**
+ * WPML: keep the language switcher on the Tutor dashboard pointed at the
+ * CURRENT sub-page (e.g. "my-courses", "settings/profile") instead of
+ * bouncing to the dashboard's root page.
+ *
+ * WPML's language switcher only knows how to link to the translated
+ * version of the exact post/page being viewed. The Dashboard is a single
+ * WP page whose sub-pages are all driven by the tutor_dashboard_page /
+ * tutor_dashboard_sub_page query vars (custom rewrite rules, not separate
+ * posts) — WPML has no idea those exist, so it always links to the bare
+ * dashboard URL.
+ */
+if (! function_exists('edumall_wpml_dashboard_language_switcher_url')) {
+	function edumall_wpml_dashboard_language_switcher_url($url, $data)
+	{
+		global $wp_query;
+
+		$dashboard_page = tutor_utils()->array_get('query_vars.tutor_dashboard_page', $wp_query);
+
+		if (! $dashboard_page) {
+			return $url;
+		}
+
+		$sub_path = $dashboard_page;
+
+		$dashboard_sub_page = tutor_utils()->array_get('query_vars.tutor_dashboard_sub_page', $wp_query);
+
+		if ($dashboard_sub_page) {
+			$sub_path .= '/' . $dashboard_sub_page;
+		}
+
+		$target_lang  = $data['code'];
+		$current_lang = apply_filters('wpml_current_language', null);
+
+		do_action('wpml_switch_language', $target_lang);
+		$translated_url = tutor_utils()->tutor_dashboard_url(trailingslashit($sub_path));
+		do_action('wpml_switch_language', $current_lang);
+
+		return $translated_url;
+	}
+}
+add_filter('wpml_ls_language_url', 'edumall_wpml_dashboard_language_switcher_url', 10, 2);
+
+/**
  * WPML: filter an array of course IDs down to the current language.
  * Used to fix instructor dashboard tabs that fetch course IDs via raw SQL,
  * which bypasses WPML's automatic WP_Query language filtering.

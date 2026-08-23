@@ -66,7 +66,7 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 			unset($languages[$source_lang]);
 
 			foreach ($languages as $lang_code => $language) {
-				$translated_id = apply_filters('wpml_object_id', $course_id, $course_post_type, false, $lang_code);
+				$translated_id = $this->get_existing_translation_id($course_id, $course_post_type, $lang_code);
 
 				if ($translated_id) {
 					$url   = tutor_utils()->course_edit_link($translated_id);
@@ -118,7 +118,7 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 			$element_type      = 'post_' . $course_post_type;
 
 			// Someone may have already created this translation; just send the instructor there.
-			$existing_id = apply_filters('wpml_object_id', $course_id, $course_post_type, false, $target_lang);
+			$existing_id = $this->get_existing_translation_id($course_id, $course_post_type, $target_lang);
 
 			if ($existing_id) {
 				wp_safe_redirect(tutor_utils()->course_edit_link($existing_id));
@@ -177,6 +177,29 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 
 			wp_safe_redirect(tutor_utils()->course_edit_link($new_course_id));
 			exit;
+		}
+
+		/**
+		 * WPML keeps a course's translation link active even after the
+		 * translated post has been moved to trash (deleting a course from
+		 * the dashboard only trashes it, it doesn't unlink WPML's
+		 * translation record). Treat a trashed translation as if it didn't
+		 * exist, so the instructor is offered "Translate to X" again
+		 * instead of a dead link to a trashed course.
+		 */
+		private function get_existing_translation_id($course_id, $course_post_type, $lang_code)
+		{
+			$translated_id = apply_filters('wpml_object_id', $course_id, $course_post_type, false, $lang_code);
+
+			if (! $translated_id) {
+				return null;
+			}
+
+			if ('trash' === get_post_status($translated_id)) {
+				return null;
+			}
+
+			return $translated_id;
 		}
 	}
 }
