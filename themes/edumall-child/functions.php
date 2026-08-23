@@ -173,8 +173,15 @@ if (! function_exists('edumall_wpml_save_instructor_bio')) {
 
 		update_user_meta($user_id, '_tutor_profile_bio_' . $language_code, $bio);
 
-		// Prevent Student::update_profile() from clobbering the default-language bio with this one.
-		$_POST['tutor_profile_bio'] = get_user_meta($user_id, '_tutor_profile_bio', true);
+		/**
+		 * Prevent Student::update_profile() from clobbering the default-language
+		 * bio with this one. It reads the field via tutor_utils()->input_old(),
+		 * which defaults to $_REQUEST, not $_POST — so both superglobals need
+		 * to be overwritten, or this substitution silently has no effect.
+		 */
+		$default_bio                    = get_user_meta($user_id, '_tutor_profile_bio', true);
+		$_POST['tutor_profile_bio']     = $default_bio;
+		$_REQUEST['tutor_profile_bio']  = $default_bio;
 	}
 }
 // Priority 5: must run before Student::update_profile(), registered at the default priority 10.
