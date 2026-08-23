@@ -100,6 +100,8 @@ if (! function_exists('edumall_wpml_get_instructor_bio')) {
 			$language_code = edumall_wpml_current_language();
 		}
 
+		edumall_bio_debug_log('GET user=' . $user_id . ' detected_lang=' . var_export($language_code, true) . ' uri=' . ($_SERVER['REQUEST_URI'] ?? ''));
+
 		if (empty($language_code)) {
 			return $default_bio;
 		}
@@ -113,6 +115,18 @@ if (! function_exists('edumall_wpml_get_instructor_bio')) {
 		$translated_bio = get_user_meta($user_id, '_tutor_profile_bio_' . $language_code, true);
 
 		return ('' !== $translated_bio) ? $translated_bio : $default_bio;
+	}
+}
+
+/**
+ * TEMPORARY diagnostic logging for the bio-per-language bug investigation.
+ * Writes to its own file (not the noisy shared debug.log). Remove once the
+ * root cause is confirmed and fixed.
+ */
+if (! function_exists('edumall_bio_debug_log')) {
+	function edumall_bio_debug_log($message)
+	{
+		error_log('[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, 3, WP_CONTENT_DIR . '/edumall-bio-debug.log');
 	}
 }
 
@@ -146,13 +160,22 @@ if (! function_exists('edumall_wpml_save_instructor_bio')) {
 			return;
 		}
 
-		$language_code = edumall_wpml_current_language();
+		$language_code     = edumall_wpml_current_language();
+		$default_language  = apply_filters('wpml_default_language', null);
+		$posted_bio_snippet = substr(wp_strip_all_tags((string) $_POST['tutor_profile_bio']), 0, 40);
+
+		edumall_bio_debug_log(
+			'SAVE user=' . $user_id
+			. ' detected_lang=' . var_export($language_code, true)
+			. ' default_lang=' . var_export($default_language, true)
+			. ' uri=' . ($_SERVER['REQUEST_URI'] ?? '')
+			. ' referer=' . ($_SERVER['HTTP_REFERER'] ?? '')
+			. ' posted_bio_start="' . $posted_bio_snippet . '"'
+		);
 
 		if (empty($language_code)) {
 			return;
 		}
-
-		$default_language = apply_filters('wpml_default_language', null);
 
 		if ($language_code === $default_language) {
 			return;
