@@ -181,6 +181,30 @@ if (! function_exists('edumall_wpml_save_instructor_bio')) {
 add_action('template_redirect', 'edumall_wpml_save_instructor_bio', 5);
 
 /**
+ * LiteSpeed Cache has "Cache Private (logged-in) Pages" enabled on this
+ * site (litespeed.conf.cache-priv = 1, 30 min TTL), and nothing tells it to
+ * purge that cache when the instructor dashboard profile form saves —
+ * Student::update_profile() only does raw update_user_meta() calls, which
+ * LiteSpeed has no automatic hook for. Result: after saving, the
+ * POST-redirect-GET reload can serve a stale cached copy of the dashboard,
+ * making the edit look like it didn't save even though it did.
+ */
+if (! function_exists('edumall_purge_cache_after_profile_edit')) {
+	function edumall_purge_cache_after_profile_edit()
+	{
+		if (tutor_utils()->array_get('tutor_action', $_POST) !== 'tutor_profile_edit') {
+			return;
+		}
+
+		if (class_exists('\LiteSpeed\Purge')) {
+			\LiteSpeed\Purge::purge_all('tutor dashboard profile update');
+		}
+	}
+}
+// Priority 5: alongside the other tutor_profile_edit fixes, before Student::update_profile() runs.
+add_action('template_redirect', 'edumall_purge_cache_after_profile_edit', 5);
+
+/**
  * Defensive fix for a crash in the site's customized
  * TUTOR\Student::update_profile() (wp-content/plugins/tutor/classes/Student.php,
  * hand-modified by a previous developer to add street/town/postal_code/CV/
