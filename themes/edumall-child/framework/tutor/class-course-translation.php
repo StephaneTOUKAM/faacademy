@@ -184,15 +184,23 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 		 * dashboard page, which WPML coerces to whatever language the
 		 * instructor is CURRENTLY browsing in — not the language of the
 		 * course being edited. That sent instructors translating a course
-		 * to English, while browsing in French, to a French-prefixed URL.
-		 * wpml_permalink converts the URL's language marker directly,
-		 * without touching WPML's global language state.
+		 * to English, while browsing in French, to a French-prefixed URL
+		 * (or worse, since the Dashboard page's slug also differs per
+		 * language here, to a broken/mismatched one).
+		 *
+		 * edumall_wpml_dashboard_url_in_language() (functions.php) resolves
+		 * the correct URL for the target language directly, without relying
+		 * on WPML's current-browsing-language coercion.
 		 */
 		private function get_course_edit_url_in_language($course_id, $lang_code)
 		{
-			$url = tutor_utils()->course_edit_link($course_id);
+			if (! tutor()->has_pro) {
+				return tutor_utils()->course_edit_link($course_id);
+			}
 
-			return apply_filters('wpml_permalink', $url, $lang_code);
+			$url = edumall_wpml_dashboard_url_in_language('create-course/?course_ID=' . $course_id, $lang_code);
+
+			return $url ? $url : tutor_utils()->course_edit_link($course_id);
 		}
 
 		/**

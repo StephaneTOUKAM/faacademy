@@ -27,6 +27,45 @@ if (! function_exists('edumall_wpml_current_language')) {
 }
 
 /**
+ * WPML: build a Tutor dashboard URL (e.g. "my-courses/", or
+ * "create-course/?course_ID=123") for a SPECIFIC language.
+ *
+ * Each language's Dashboard page has its own distinct slug on this site
+ * (dashboard / dashboard-en / dashboard-de), not just a shared slug behind
+ * a language directory prefix — so neither tutor_utils()->tutor_dashboard_url()
+ * (always coerced to whatever language is CURRENTLY being browsed, via
+ * WPML's get_the_permalink() filtering) nor wpml_permalink's lightweight
+ * string conversion (which only swaps the language prefix, not the slug)
+ * can produce the right URL for an arbitrary target language.
+ *
+ * Resolves the Dashboard page's own translation for the target language to
+ * get its real slug, and lets wpml_permalink do only what it's reliable
+ * for — converting the home URL's language prefix. Returns null if the
+ * Dashboard page has no translation for that language.
+ */
+if (! function_exists('edumall_wpml_dashboard_url_in_language')) {
+	function edumall_wpml_dashboard_url_in_language($sub_path, $lang_code)
+	{
+		$dashboard_page_id  = (int) tutor_utils()->get_option('tutor_dashboard_page_id');
+		$translated_page_id = apply_filters('wpml_object_id', $dashboard_page_id, 'page', false, $lang_code);
+
+		if (! $translated_page_id) {
+			return null;
+		}
+
+		$translated_page_slug = get_post_field('post_name', $translated_page_id);
+
+		if (! $translated_page_slug) {
+			return null;
+		}
+
+		$lang_home_url = apply_filters('wpml_permalink', home_url('/'), $lang_code);
+
+		return trailingslashit($lang_home_url) . trailingslashit($translated_page_slug) . $sub_path;
+	}
+}
+
+/**
  * WPML: keep the language switcher on the Tutor dashboard pointed at the
  * CURRENT sub-page (e.g. "my-courses", "settings/profile") instead of
  * bouncing to the dashboard's root page.
@@ -57,17 +96,9 @@ if (! function_exists('edumall_wpml_dashboard_language_switcher_url')) {
 			$sub_path .= '/' . $dashboard_sub_page;
 		}
 
-		$current_dashboard_url = trailingslashit(tutor_utils()->tutor_dashboard_url(trailingslashit($sub_path)));
+		$translated_url = edumall_wpml_dashboard_url_in_language(trailingslashit($sub_path), $data['code']);
 
-		/**
-		 * wpml_permalink converts a URL's language marker without touching
-		 * WPML's global "current language" state — unlike wpml_switch_language,
-		 * which was tried here first and caused the WHOLE page (including
-		 * static UI strings translated via WPML String Translation) to
-		 * render in the wrong language after the redirect, apparently from
-		 * a lingering side effect on WPML's language cookie.
-		 */
-		return apply_filters('wpml_permalink', $current_dashboard_url, $data['code']);
+		return $translated_url ? $translated_url : $url;
 	}
 }
 add_filter('wpml_ls_language_url', 'edumall_wpml_dashboard_language_switcher_url', 10, 2);
