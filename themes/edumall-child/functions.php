@@ -57,14 +57,17 @@ if (! function_exists('edumall_wpml_dashboard_language_switcher_url')) {
 			$sub_path .= '/' . $dashboard_sub_page;
 		}
 
-		$target_lang  = $data['code'];
-		$current_lang = apply_filters('wpml_current_language', null);
+		$current_dashboard_url = trailingslashit(tutor_utils()->tutor_dashboard_url(trailingslashit($sub_path)));
 
-		do_action('wpml_switch_language', $target_lang);
-		$translated_url = tutor_utils()->tutor_dashboard_url(trailingslashit($sub_path));
-		do_action('wpml_switch_language', $current_lang);
-
-		return $translated_url;
+		/**
+		 * wpml_permalink converts a URL's language marker without touching
+		 * WPML's global "current language" state — unlike wpml_switch_language,
+		 * which was tried here first and caused the WHOLE page (including
+		 * static UI strings translated via WPML String Translation) to
+		 * render in the wrong language after the redirect, apparently from
+		 * a lingering side effect on WPML's language cookie.
+		 */
+		return apply_filters('wpml_permalink', $current_dashboard_url, $data['code']);
 	}
 }
 add_filter('wpml_ls_language_url', 'edumall_wpml_dashboard_language_switcher_url', 10, 2);

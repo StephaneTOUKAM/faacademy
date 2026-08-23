@@ -69,7 +69,7 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 				$translated_id = $this->get_existing_translation_id($course_id, $course_post_type, $lang_code);
 
 				if ($translated_id) {
-					$url   = tutor_utils()->course_edit_link($translated_id);
+					$url   = $this->get_course_edit_url_in_language($translated_id, $lang_code);
 					/* translators: %s is a language name, e.g. "Français" */
 					$label = sprintf(esc_html__('Edit %s translation', 'edumall'), esc_html($language['native_name']));
 				} else {
@@ -121,7 +121,7 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 			$existing_id = $this->get_existing_translation_id($course_id, $course_post_type, $target_lang);
 
 			if ($existing_id) {
-				wp_safe_redirect(tutor_utils()->course_edit_link($existing_id));
+				wp_safe_redirect($this->get_course_edit_url_in_language($existing_id, $target_lang));
 				exit;
 			}
 
@@ -175,8 +175,24 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 
 			add_user_meta($original->post_author, '_tutor_instructor_course_id', $new_course_id);
 
-			wp_safe_redirect(tutor_utils()->course_edit_link($new_course_id));
+			wp_safe_redirect($this->get_course_edit_url_in_language($new_course_id, $target_lang));
 			exit;
+		}
+
+		/**
+		 * course_edit_link() builds its URL from get_the_permalink() on the
+		 * dashboard page, which WPML coerces to whatever language the
+		 * instructor is CURRENTLY browsing in — not the language of the
+		 * course being edited. That sent instructors translating a course
+		 * to English, while browsing in French, to a French-prefixed URL.
+		 * wpml_permalink converts the URL's language marker directly,
+		 * without touching WPML's global language state.
+		 */
+		private function get_course_edit_url_in_language($course_id, $lang_code)
+		{
+			$url = tutor_utils()->course_edit_link($course_id);
+
+			return apply_filters('wpml_permalink', $url, $lang_code);
 		}
 
 		/**
