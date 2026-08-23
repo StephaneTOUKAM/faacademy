@@ -100,8 +100,6 @@ if (! function_exists('edumall_wpml_get_instructor_bio')) {
 			$language_code = edumall_wpml_current_language();
 		}
 
-		edumall_bio_debug_log('GET user=' . $user_id . ' detected_lang=' . var_export($language_code, true) . ' uri=' . ($_SERVER['REQUEST_URI'] ?? ''));
-
 		if (empty($language_code)) {
 			return $default_bio;
 		}
@@ -119,26 +117,24 @@ if (! function_exists('edumall_wpml_get_instructor_bio')) {
 }
 
 /**
- * TEMPORARY diagnostic logging for the bio-per-language bug investigation.
- * Writes to its own file (not the noisy shared debug.log). Remove once the
- * root cause is confirmed and fixed.
- */
-if (! function_exists('edumall_bio_debug_log')) {
-	function edumall_bio_debug_log($message)
-	{
-		error_log('[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, 3, WP_CONTENT_DIR . '/edumall-bio-debug.log');
-	}
-}
-
-/**
  * WPML: save an instructor's bio for the language the dashboard is
  * currently displayed in, so the front-end shows each language's own bio
  * instead of whichever one was typed last.
  *
- * The default-language bio keeps using the plain "_tutor_profile_bio" key
- * (already saved by the site's customized TUTOR\Student::update_profile(),
- * see wp-content/plugins/tutor/classes/Student.php); this only adds a
- * per-language copy for secondary languages.
+ * The site's customized TUTOR\Student::update_profile() (see
+ * wp-content/plugins/tutor/classes/Student.php) is NOT WPML-aware: it
+ * unconditionally does update_user_meta($user_id, '_tutor_profile_bio', ...)
+ * with whatever was posted, no matter which language's form submitted it.
+ * So editing the bio in French was clobbering the German (default-language)
+ * bio, because both write to the very same "_tutor_profile_bio" key.
+ *
+ * Fix: run BEFORE Student::update_profile() (both are on template_redirect;
+ * this uses priority 5, Student's is the default 10) and, when the current
+ * language isn't the default one, (a) stash the submitted content under its
+ * own "_tutor_profile_bio_{lang}" key ourselves, then (b) replace
+ * $_POST['tutor_profile_bio'] with the EXISTING default-language bio before
+ * Student's handler ever reads it — so its unconditional save just
+ * rewrites the same default bio back to itself instead of overwriting it.
  *
  * Note: the dashboard settings form posts tutor_action=tutor_profile_edit
  * and a "tutor_profile_bio" field (no leading underscore) — that's the
@@ -146,7 +142,7 @@ if (! function_exists('edumall_bio_debug_log')) {
  * tutor_profile_update_by_wp/User::profile_update().
  */
 if (! function_exists('edumall_wpml_save_instructor_bio')) {
-	function edumall_wpml_save_instructor_bio($user_id)
+	function edumall_wpml_save_instructor_bio()
 	{
 		if (! defined('ICL_SITEPRESS_VERSION')) {
 			return;
@@ -160,33 +156,29 @@ if (! function_exists('edumall_wpml_save_instructor_bio')) {
 			return;
 		}
 
-		$language_code     = edumall_wpml_current_language();
-		$default_language  = apply_filters('wpml_default_language', null);
-		$posted_bio_snippet = substr(wp_strip_all_tags((string) $_POST['tutor_profile_bio']), 0, 40);
+		$language_code    = edumall_wpml_current_language();
+		$default_language = apply_filters('wpml_default_language', null);
 
-		edumall_bio_debug_log(
-			'SAVE user=' . $user_id
-			. ' detected_lang=' . var_export($language_code, true)
-			. ' default_lang=' . var_export($default_language, true)
-			. ' uri=' . ($_SERVER['REQUEST_URI'] ?? '')
-			. ' referer=' . ($_SERVER['HTTP_REFERER'] ?? '')
-			. ' posted_bio_start="' . $posted_bio_snippet . '"'
-		);
-
-		if (empty($language_code)) {
+		if (empty($language_code) || $language_code === $default_language) {
 			return;
 		}
 
-		if ($language_code === $default_language) {
+		$user_id = get_current_user_id();
+
+		if (! $user_id) {
 			return;
 		}
 
 		$bio = wp_kses_post(wp_unslash($_POST['tutor_profile_bio']));
 
 		update_user_meta($user_id, '_tutor_profile_bio_' . $language_code, $bio);
+
+		// Prevent Student::update_profile() from clobbering the default-language bio with this one.
+		$_POST['tutor_profile_bio'] = get_user_meta($user_id, '_tutor_profile_bio', true);
 	}
 }
-add_action('profile_update', 'edumall_wpml_save_instructor_bio');
+// Priority 5: must run before Student::update_profile(), registered at the default priority 10.
+add_action('template_redirect', 'edumall_wpml_save_instructor_bio', 5);
 
 /**
  * Defensive fix for a crash in the site's customized
