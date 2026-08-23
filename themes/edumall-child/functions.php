@@ -13,6 +13,50 @@ if (! function_exists('edumall_child_enqueue_scripts')) {
 add_action('wp_enqueue_scripts', 'edumall_child_enqueue_scripts', 15);
 
 /**
+ * Guarantee the usermeta link Tutor's permission checks rely on
+ * (can_user_edit_course() -> is_instructor_of_this_course(), see
+ * wp-content/plugins/tutor/classes/Utils.php) exists whenever an instructor
+ * opens the frontend course builder for a course they actually own.
+ *
+ * That link (usermeta "_tutor_instructor_course_id") is supposed to be set
+ * once, when a course is first created — but at least one path can leave a
+ * real, author-owned draft without it (observed on a course created via
+ * the WPML translation feature, edumall_translate_course action in
+ * class-course-translation.php, after being trashed and re-translated —
+ * exact trigger unconfirmed, but the effect is reproducible: the builder
+ * loads fine, then submitting throws a JSON "Access Denied" with no
+ * indication why). Rather than chase every path that can produce this,
+ * just make the create-course page self-healing: if the current user is
+ * the post's real author but isn't yet linked, link them.
+ */
+if (! function_exists('edumall_ensure_instructor_course_link')) {
+	function edumall_ensure_instructor_course_link()
+	{
+		if ('create-course' !== get_query_var('tutor_dashboard_page')) {
+			return;
+		}
+
+		$course_id = isset($_GET['course_ID']) ? absint($_GET['course_ID']) : 0;
+		$user_id   = get_current_user_id();
+
+		if (! $course_id || ! $user_id) {
+			return;
+		}
+
+		$course = get_post($course_id);
+
+		if (! $course || (int) $course->post_author !== $user_id) {
+			return;
+		}
+
+		if (! tutor_utils()->is_instructor_of_this_course($user_id, $course_id)) {
+			add_user_meta($user_id, '_tutor_instructor_course_id', $course_id);
+		}
+	}
+}
+add_action('template_redirect', 'edumall_ensure_instructor_course_link', 6);
+
+/**
  * WPML: get current language code, or null if WPML is inactive.
  */
 if (! function_exists('edumall_wpml_current_language')) {
