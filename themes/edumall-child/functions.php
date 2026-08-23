@@ -200,6 +200,76 @@ if (! function_exists('edumall_fix_tutor_profile_form_crash')) {
 // Priority 5: must run before Student::update_profile(), registered at the default priority 10.
 add_action('template_redirect', 'edumall_fix_tutor_profile_form_crash', 5);
 
+/**
+ * WPML: make the Tutor dashboard (My Profile, My Courses, Create Course...)
+ * actually reachable in every language, not just the one whose page is
+ * stored in the "tutor_dashboard_page_id" option.
+ *
+ * TUTOR\Rewrite_Rules::add_rewrite_rules() (wp-content/plugins/tutor/classes/Rewrite_Rules.php)
+ * builds dashboard sub-page rewrite rules using ONLY that single page's
+ * slug — it has no WPML awareness. WPML duplicates the Dashboard page once
+ * per language (e.g. /dashboard/, /dashboard-en/, /dashboard-de/), but only
+ * the one Tutor's option happens to point at ever gets a matching rewrite
+ * rule; every other language 404s on every dashboard sub-page.
+ *
+ * This adds the same rules for the sibling-language dashboard pages,
+ * without touching the vendor plugin file. Runs after Tutor's own
+ * generate_rewrite_rules callback (registered at the default priority 10)
+ * so $wp_rewrite->rules already contains its base rules to extend.
+ */
+if (! function_exists('edumall_wpml_tutor_dashboard_rewrite_rules')) {
+	function edumall_wpml_tutor_dashboard_rewrite_rules($wp_rewrite)
+	{
+		if (! defined('ICL_SITEPRESS_VERSION') || ! function_exists('tutor_utils') || ! class_exists('\TUTOR\Rewrite_Rules')) {
+			return;
+		}
+
+		$dashboard_page_id = (int) tutor_utils()->get_option('tutor_dashboard_page_id');
+
+		if (! $dashboard_page_id) {
+			return;
+		}
+
+		$trid = apply_filters('wpml_element_trid', null, $dashboard_page_id, 'post_page');
+
+		if (! $trid) {
+			return;
+		}
+
+		$translations = apply_filters('wpml_get_element_translations', null, $trid, 'post_page');
+
+		if (! is_array($translations)) {
+			return;
+		}
+
+		$dashboard_pages = tutor_utils()->tutor_dashboard_permalinks();
+		$new_rules       = array();
+
+		foreach ($translations as $translation) {
+			$translated_page_id = (int) $translation->element_id;
+
+			if (! $translated_page_id || $translated_page_id === $dashboard_page_id) {
+				continue; // Tutor's own rule already covers the page its option points to.
+			}
+
+			$slug = get_post_field('post_name', $translated_page_id);
+
+			if (! $slug) {
+				continue;
+			}
+
+			foreach ($dashboard_pages as $dashboard_key => $dashboard_page) {
+				$new_rules["({$slug})/{$dashboard_key}/?$"]        = 'index.php?pagename=' . $wp_rewrite->preg_index(1) . '&tutor_dashboard_page=' . $dashboard_key;
+				$new_rules["({$slug})/{$dashboard_key}/(.+?)/?$"] = 'index.php?pagename=' . $wp_rewrite->preg_index(1) . '&tutor_dashboard_page=' . $dashboard_key . '&tutor_dashboard_sub_page=' . $wp_rewrite->preg_index(2);
+			}
+		}
+
+		if ($new_rules) {
+			$wp_rewrite->rules = $new_rules + $wp_rewrite->rules;
+		}
+	}
+}
+add_action('generate_rewrite_rules', 'edumall_wpml_tutor_dashboard_rewrite_rules', 20);
 
 
 require_once(get_stylesheet_directory() . '/widgets/tutor/popular-courses.php');
