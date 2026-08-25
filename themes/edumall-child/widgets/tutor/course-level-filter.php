@@ -140,6 +140,14 @@ if ( ! class_exists( 'Edumall_WP_Widget_Course_Level_Filter' ) ) {
 		protected function get_filtered_course_count( $current_level ) {
 			global $wpdb;
 
+			// See Edumall_Course_Layered_Nav_Base::get_filtered_term_counts() for why this is cached.
+			$transient_name = 'edumall_filtered_level_count_' . md5( serialize( $current_level ) . $_SERVER['QUERY_STRING'] . edumall_wpml_current_language() );
+			$cached_count   = get_transient( $transient_name );
+
+			if ( false !== $cached_count ) {
+				return absint( $cached_count );
+			}
+
 			$tax_query  = Edumall_Course_Query::instance()->get_main_tax_query();
 			$meta_query = Edumall_Course_Query::instance()->get_main_meta_query();
 
@@ -178,7 +186,11 @@ if ( ! class_exists( 'Edumall_WP_Widget_Course_Level_Filter' ) ) {
 			$sql .= " WHERE {$wpdb->posts}.post_type = 'courses' AND {$wpdb->posts}.post_status = 'publish' ";
 			$sql .= $tax_query_sql['where'] . $meta_query_sql['where'] . $author_query_sql['where'] . $search_query_sql['where'];
 
-			return absint( $wpdb->get_var( $sql ) ); // WPCS: unprepared SQL ok.
+			$count = absint( $wpdb->get_var( $sql ) ); // WPCS: unprepared SQL ok.
+
+			set_transient( $transient_name, $count, 15 * MINUTE_IN_SECONDS );
+
+			return $count;
 		}
 	}
 }

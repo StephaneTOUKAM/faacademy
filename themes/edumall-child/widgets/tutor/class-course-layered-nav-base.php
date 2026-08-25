@@ -49,6 +49,21 @@ if ( ! class_exists( 'Edumall_Course_Layered_Nav_Base' ) ) {
 
 			$term_ids = (array) $term_ids;
 
+			/**
+			 * This runs one full SQL query per term shown in every course
+			 * filter widget, recomputed from scratch on every page load.
+			 * On an archive page with several filter widgets that's 15-30+
+			 * uncached queries per request — cache it per unique filter
+			 * combination (same pattern/TTL as the popular/featured/trending
+			 * courses caching in Edumall_Tutor, see framework/tutor/class-tutor.php).
+			 */
+			$transient_name = 'edumall_filtered_term_count_' . md5( serialize( $term_ids ) . $taxonomy . $query_type . $_SERVER['QUERY_STRING'] . edumall_wpml_current_language() );
+			$cached_count   = get_transient( $transient_name );
+
+			if ( false !== $cached_count ) {
+				return absint( $cached_count );
+			}
+
 			$tax_query  = Edumall_Course_Query::instance()->get_main_tax_query();
 			$meta_query = Edumall_Course_Query::instance()->get_main_meta_query();
 
@@ -87,7 +102,11 @@ if ( ! class_exists( 'Edumall_Course_Layered_Nav_Base' ) ) {
 
 			$sql = implode( ' ', $sql );
 
-			return absint( $wpdb->get_var( $sql ) ); // WPCS: unprepared SQL ok.
+			$count = absint( $wpdb->get_var( $sql ) ); // WPCS: unprepared SQL ok.
+
+			set_transient( $transient_name, $count, 15 * MINUTE_IN_SECONDS );
+
+			return $count;
 		}
 	}
 }

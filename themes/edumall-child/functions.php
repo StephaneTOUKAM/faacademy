@@ -13,6 +13,41 @@ if (! function_exists('edumall_child_enqueue_scripts')) {
 add_action('wp_enqueue_scripts', 'edumall_child_enqueue_scripts', 15);
 
 /**
+ * Keep crawlers off the /courses/ filter combinations.
+ *
+ * The course archive supports ~10 combinable filter query args (category,
+ * subject, theme, language, level, duration, instructor, price, orderby,
+ * rating — see Edumall_Tutor::get_course_listing_page_url() in
+ * framework/tutor/class-tutor.php). Each combination is a distinct,
+ * uncached URL, and each one triggers 15-30+ extra uncached SQL queries
+ * for the sidebar filter counts (widgets/tutor/*-filter.php). A crawler
+ * working through these combinations was identified by the host (WHC) as
+ * the trigger for MySQL max_user_connections errors (HTTP 500s).
+ *
+ * This doesn't touch legitimate visitors using the filters — it only asks
+ * well-behaved crawlers not to request these URL variations. Both the
+ * plain and "?something&param=" forms are added, matching the pattern
+ * already used elsewhere in this robots.txt for add-to-cart.
+ */
+if (! function_exists('edumall_robots_txt_disallow_course_filters')) {
+	function edumall_robots_txt_disallow_course_filters($output)
+	{
+		// "filter_*" covers filter_course-category/subject/theme/language/course_level/name in one pattern.
+		$disallowed_patterns = ['filter_*=', 'duration=', 'instructor=', 'price_type=', 'orderby=', 'rating_filter='];
+
+		$rules = "\n# Course archive filter combinations (avoid crawler-triggered DB load)\n";
+
+		foreach ($disallowed_patterns as $pattern) {
+			$rules .= "Disallow: /*?{$pattern}\n";
+			$rules .= "Disallow: /*?*{$pattern}\n";
+		}
+
+		return $output . $rules;
+	}
+}
+add_filter('robots_txt', 'edumall_robots_txt_disallow_course_filters', 20);
+
+/**
  * Guarantee the usermeta link Tutor's permission checks rely on
  * (can_user_edit_course() -> is_instructor_of_this_course(), see
  * wp-content/plugins/tutor/classes/Utils.php) exists whenever an instructor
