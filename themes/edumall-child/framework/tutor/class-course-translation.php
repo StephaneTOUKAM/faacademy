@@ -157,6 +157,22 @@ if (! class_exists('Edumall_Tutor_Course_Translation')) {
 				set_post_thumbnail($new_course_id, $thumbnail_id);
 			}
 
+			/**
+			 * Course-level media that isn't part of post_content: the intro
+			 * video (_video, see Tutor\Course::save_course_meta()) and the
+			 * course attachments addon's file list (_tutor_attachments, see
+			 * tutor-pro/addons/tutor-course-attachments/classes/CourseAttachments.php).
+			 * Same media for every language by default; the instructor can
+			 * still replace them per translation from the course builder.
+			 */
+			foreach (['_video', '_tutor_attachments'] as $media_meta_key) {
+				$media_meta_value = get_post_meta($course_id, $media_meta_key, true);
+
+				if ('' !== $media_meta_value) {
+					update_post_meta($new_course_id, $media_meta_key, $media_meta_value);
+				}
+			}
+
 			foreach (get_object_taxonomies($course_post_type) as $taxonomy) {
 				$term_ids = wp_get_object_terms($course_id, $taxonomy, ['fields' => 'ids']);
 
